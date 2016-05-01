@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.IO;
 
 using Windows.Graphics.Imaging;
 using Windows.Media;
@@ -244,6 +245,11 @@ namespace MMEmotionCam
         }
 
 
+
+
+
+
+
         /// <summary>
         /// Captures a single frame from the running webcam stream and executes the FaceDetector on the image. If successful calls SetupVisualization to display the results.
         /// </summary>
@@ -286,6 +292,8 @@ namespace MMEmotionCam
                         displaySource = new WriteableBitmap(convertedSource.PixelWidth, convertedSource.PixelHeight);
                         convertedSource.CopyToBuffer(displaySource.PixelBuffer);
                     }
+
+
 
                     // Create our display using the available image and face results.
                     this.SetupVisualization(displaySource, faces);
