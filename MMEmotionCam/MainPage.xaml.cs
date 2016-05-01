@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.IO;
 
 using Windows.Graphics.Imaging;
 using Windows.Media;
@@ -15,6 +14,10 @@ using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Media.Imaging;
 using Windows.UI.Xaml.Navigation;
 using Windows.UI.Xaml.Shapes;
+
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
 
 
 
@@ -245,10 +248,57 @@ namespace MMEmotionCam
         }
 
 
+        private async void SaveSoftwareBitmapToFile(SoftwareBitmap softwareBitmap, StorageFile outputFile)
+        {
+            using (IRandomAccessStream stream = await outputFile.OpenAsync(FileAccessMode.ReadWrite))
+            {
+                // Create an encoder with the desired format
+                BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream);
+
+                // Set the software bitmap
+                encoder.SetSoftwareBitmap(softwareBitmap);
+
+                // Set additional encoding parameters, if needed
+                encoder.BitmapTransform.ScaledWidth = 320;
+                encoder.BitmapTransform.ScaledHeight = 240;
+                encoder.BitmapTransform.Rotation = Windows.Graphics.Imaging.BitmapRotation.Clockwise90Degrees;
+                encoder.BitmapTransform.InterpolationMode = BitmapInterpolationMode.Fant;
+                encoder.IsThumbnailGenerated = true;
+
+                try
+                {
+                    await encoder.FlushAsync();
+                }
+                catch (Exception err)
+                {
+                    switch (err.HResult)
+                    {
+                        case unchecked((int)0x88982F81): //WINCODEC_ERR_UNSUPPORTEDOPERATION
+                                                         // If the encoder does not support writing a thumbnail, then try again
+                                                         // but disable thumbnail generation.
+                            encoder.IsThumbnailGenerated = false;
+                            break;
+                        default:
+                            throw err;
+                    }
+                }
+
+                if (encoder.IsThumbnailGenerated == false)
+                {
+                    await encoder.FlushAsync();
+                }
 
 
+            }
+        }
 
 
+        private String saveSoftwareBitmap(SoftwareBitmap bm)
+        {
+            String filename = "-";
+
+            return filename;
+        }
 
         /// <summary>
         /// Captures a single frame from the running webcam stream and executes the FaceDetector on the image. If successful calls SetupVisualization to display the results.
@@ -278,6 +328,7 @@ namespace MMEmotionCam
                     // The returned VideoFrame should be in the supported NV12 format but we need to verify this.
                     if (FaceDetector.IsBitmapPixelFormatSupported(previewFrame.SoftwareBitmap.BitmapPixelFormat))
                     {
+                        String filename = saveSoftwareBitmap(previewFrame.SoftwareBitmap);
                         faces = await this.faceDetector.DetectFacesAsync(previewFrame.SoftwareBitmap);
                     }
                     else
@@ -292,8 +343,6 @@ namespace MMEmotionCam
                         displaySource = new WriteableBitmap(convertedSource.PixelWidth, convertedSource.PixelHeight);
                         convertedSource.CopyToBuffer(displaySource.PixelBuffer);
                     }
-
-
 
                     // Create our display using the available image and face results.
                     this.SetupVisualization(displaySource, faces);
